@@ -19,7 +19,7 @@ def generate_text_files():
 
     tasks = []
     task_set = set()  # Define the task_set as an empty set
-    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:  ##   WORKERS 
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:  ##   WORKERS 
         futures = []
         for line in lines:
             topic_data = json.loads(line)
@@ -117,67 +117,50 @@ task_id_counter = 0  # Global counter for task IDs
 
 def cleanse_text(line):
     global task_id_counter
-    # Remove newlines
-    clean_line = line.replace('\n', ' ')
-    # Removing leading number and period
-    clean_line = re.sub(r'^\d+\.\s*', '', clean_line)
-    # Using regex to find and replace 'name' with modified 'name'
-    match_name = re.search(r"'name': '([^']+)'", clean_line)
+    clean_line = line.replace('\n', ' ')  # Remove newlines
+    clean_line = re.sub(r'^\d+\.\s*', '', clean_line)  # Removing leading number and period
+    match_name = re.search(r"'name': '([^']+)'", clean_line)  # Using regex to find and replace 'name' with modified 'name'
+
     if match_name:
         old_name = match_name.group(1)
         new_name = old_name.lower().replace(' ', '_')
         clean_line = clean_line.replace(old_name, new_name)
-    # Replace 'id' with a new one
-    match_id = re.search(r"'id': '([^']+)'", clean_line)
+
+    match_id = re.search(r"'id': '([^']+)'", clean_line)  # Replace 'id' with a new one
     if match_id:
         old_id = match_id.group(1)
         new_id = f'seed_task_{task_id_counter}'
         clean_line = clean_line.replace(old_id, new_id)
         task_id_counter += 1
+
     return clean_line
 
 
 def text_to_csv(dir_path, output_file):
+    global task_id_counter
     files_list = os.listdir(dir_path)
     text_files_list = [file for file in files_list if file.endswith('.txt')]
 
     with open(output_file, 'w', encoding='utf-8', newline='') as csv_file:
         writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)  # Create a csv.writer
-        writer.writerow(['id', 'Prompt', 'Step-by-step reasoning', 'Solution'])  # Write header
+        writer.writerow(['id', 'Story'])  # Write header
 
         for text_file in text_files_list:
             with open(os.path.join(dir_path, text_file), 'r', encoding='utf-8') as f:
-                for line in f:
-                    line = cleanse_text(line).strip()
-                    # Ensure line isn't empty
-                    if line:
-                        # Load the JSON object from the line
-                        try:
-                            task = json.loads(line)
-                            id = task["id"]
-                            prompt = task["task"][0]["prompt"]
-                            reasoning = task["task"][0]["reasoning"]
-                            solution = task["task"][0]["solution"]
+                full_story = f.read()  # Read the whole file content
+                full_story = cleanse_text(full_story).strip()
 
-                            print(f"id: {id}")
-                            print(f"Prompt: {prompt}")
-                            print(f"Reasoning: {reasoning}")
-                            print(f"Solution: {solution}")
-
-                            # Write to CSV directly, avoiding triple quotes
-                            writer.writerow([id, prompt, reasoning, solution])  # Use the writer to write the row
-                        except json.JSONDecodeError:
-                            print(f"Couldn't parse JSON from line: {line}")
-            # os.remove(os.path.join(dir_path, text_file))  # delete the txt file after converting
-
+                # Write to CSV directly, avoiding triple quotes
+                writer.writerow([f'seed_task_{task_id_counter}', full_story])
+                task_id_counter += 1
 
 def main():
     if not os.path.exists('output'):
         os.makedirs('output')
-    generate_text_files()
+    #generate_text_files()
     dir_path = 'output/'
     output_file = 'output.csv'
-    #text_to_csv(dir_path, output_file)
+    text_to_csv(dir_path, output_file)
 
 
 if __name__ == "__main__":
