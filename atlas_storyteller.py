@@ -157,7 +157,7 @@ def text_to_csv(dir_path, output_file):
 def main():
     if not os.path.exists('output'):
         os.makedirs('output')
-    #generate_text_files()
+    generate_text_files()
     dir_path = 'output/'
     output_file = 'output.csv'
     text_to_csv(dir_path, output_file)
